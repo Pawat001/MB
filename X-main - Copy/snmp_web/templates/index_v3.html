@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNMP Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        function getSNMPInfo() {
+            const ip = document.getElementById('ip').value;
+            const ro = document.getElementById('ro').value;
+            const rw = document.getElementById('rw').value;
+
+            if (!ip || !ro || !rw) {
+                alert('Please fill in all fields.');
+                return;
+            }
+            socket.emit('get_snmp_info', { ip, ro, rw });
+        }
+
+        function toggleStatus(ip, rw, index, currentStatus) {
+            socket.emit('toggle_interface_status', { ip, rw, index, current_status: currentStatus });
+        }
+
+        socket.on('update_interface_data', function(data) {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+
+            output.innerHTML += `<p>System Name: ${data.sysName}</p>`;
+            output.innerHTML += `<p>System Description: ${data.sysDescr}</p>`;
+
+            for (const [key, value] of Object.entries(data)) {
+                if (key.startsWith('interface_')) {
+                    const status = value.admin_status === '1' ? 'Up' : 'Down';
+                    const color = status === 'Up' ? 'green' : 'red';
+                    const buttonText = status === 'Up' ? 'Disable' : 'Enable';
+                    const newStatus = value.admin_status === '1' ? '2' : '1';
+
+                    output.innerHTML += `
+                        <p>
+                            ${value.name}: <span style="color:${color};">${status}</span>
+                            <button onclick="toggleStatus('${data.ip}', '${data.rw}', ${value.index}, '${value.admin_status}')">
+                                Toggle to ${buttonText}
+                            </button>
+                        </p>`;
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>SNMP Interface</h1>
+    <label for="ip">IP Address:</label>
+    <input type="text" id="ip"><br>
+    <label for="ro">RO Community:</label>
+    <input type="text" id="ro"><br>
+    <label for="rw">RW Community:</label>
+    <input type="text" id="rw"><br>
+    <button onclick="getSNMPInfo()">Connect</button>
+    <div id="output"></div>
+</body>
+</html>
